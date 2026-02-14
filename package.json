@@ -1,0 +1,25 @@
+{
+  "name": "beatbrain-chat",
+  "version": "0.1.0",
+  "description": "A music-obsessed AI chat friend powered by BeatBrain and pi-mono",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "beatbrain-chat": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsc && node dist/index.js"
+  },
+  "keywords": ["ai", "agent", "music", "beatbrain", "pi-mono", "cli"],
+  "author": "mager",
+  "license": "MIT",
+  "dependencies": {
+    "@mariozechner/pi-agent-core": "^0.52.7",
+    "@mariozechner/pi-ai": "^0.52.7",
+    "@sinclair/typebox": "^0.34.33",
+    "@types/node": "^22.13.4",
+    "typescript": "^5.7.3"
+  }
+}
