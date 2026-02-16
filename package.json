@@ -1,11 +1,11 @@
 {
-  "name": "beatbrain-chat",
-  "version": "0.1.0",
-  "description": "A music-obsessed AI chat friend powered by BeatBrain and pi-mono",
+  "name": "temporal",
+  "version": "0.2.0",
+  "description": "A music-obsessed AI chat agent powered by BeatBrain and pi-mono",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
-    "beatbrain-chat": "dist/index.js"
+    "temporal": "dist/index.js"
   },
   "scripts": {
     "build": "tsc",

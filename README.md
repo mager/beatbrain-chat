@@ -1,16 +1,16 @@
-# 🎵 BeatBrain Chat
+# 🎵 Temporal
 
-A music-obsessed AI friend in your terminal. Ask it what to listen to and it pulls from the live [BeatBrain](https://beatbrain.xyz) discover feed — aggregating Spotify New Releases, Reddit [FRESH], Billboard, Pitchfork Best New Music, and HotNewHipHop. Deep-dive into any track's production credits, instruments, BPM, key, and audio features. Explore artist profiles and genre-based discovery.
+A music-obsessed AI agent in your terminal. Ask it what to listen to and it pulls from the live [BeatBrain](https://beatbrain.xyz) discover feed — aggregating Spotify New Releases, Reddit [FRESH], Billboard, Pitchfork Best New Music, and HotNewHipHop. Deep-dive into any track's production credits, instruments, BPM, key, and audio features. Explore artist profiles and genre-based discovery.
 
 Built with [pi-mono](https://github.com/badlogic/pi-mono) (`@mariozechner/pi-agent-core` + `@mariozechner/pi-ai`), the same toolkit that powers [OpenClaw](https://github.com/openclaw/openclaw).
 
-**100% free** — powered by Groq's free API tier running Llama 4 Scout. No paid API keys required.
+**Free to run** — defaults to OpenAI's GPT-OSS 120B on Groq. Swap to any provider with a flag.
 
 ## Quick Start
 
 ```bash
-git clone https://github.com/mager/beatbrain-chat.git
-cd beatbrain-chat
+git clone https://github.com/mager/temporal.git
+cd temporal
 npm install
 npm run build
 ```
@@ -25,11 +25,11 @@ npm start
 ## Usage
 
 ```
-♫ ♪ ♬  B E A T B R A I N
+♫ ♪ ♬  T E M P O R A L
 ─────────────────────────────────
 Your music-obsessed friend.
 Ask me anything about music.
-groq/meta-llama/llama-4-scout-17b-16e-instruct
+groq/openai/gpt-oss-120b
 
 ♩ has sam smith put out anything good lately?
 ♪ Sam Smith's "Unholy" with Kim Petras is still charting — sitting at 77
@@ -56,11 +56,11 @@ The agent chains tools automatically — ask about a song and it'll search, pull
 ## CLI Options
 
 ```
-Usage: beatbrain-chat [options]
+Usage: temporal [options]
 
 Options:
   -p, --provider <name>   LLM provider (default: groq)
-  -m, --model <name>      Model name (default: llama-4-scout)
+  -m, --model <name>      Model name (default: gpt-oss-120b)
   -h, --help              Show this help
 ```
 
@@ -73,21 +73,21 @@ Options:
 | `OPENAI_API_KEY` | — | OpenAI API key |
 | `ANTHROPIC_API_KEY` | — | Anthropic API key |
 | `BEATBRAIN_PROVIDER` | `groq` | Override default provider |
-| `BEATBRAIN_MODEL` | `meta-llama/llama-4-scout-17b-16e-instruct` | Override default model |
+| `BEATBRAIN_MODEL` | `openai/gpt-oss-120b` | Override default model |
 
 ### Alternative providers
 
 ```bash
-beatbrain-chat -p google -m gemini-2.0-flash    # free
-beatbrain-chat -p anthropic -m claude-sonnet-4-20250514
-beatbrain-chat -p openai -m gpt-4o
+temporal -p google -m gemini-2.0-flash
+temporal -p anthropic -m claude-sonnet-4-20250514
+temporal -p openai -m gpt-4o
 ```
 
 ## How It Works
 
-BeatBrain Chat uses `@mariozechner/pi-agent-core` to create a stateful agent with five custom tools (the "context brain"). The agent maintains conversation context across turns, streams responses token-by-token with a typewriter effect, and chains multiple tools to build rich answers.
+Temporal uses `@mariozechner/pi-agent-core` to create a stateful agent with five custom tools (the "context brain"). The agent maintains conversation context across turns, streams responses token-by-token with a typewriter effect, and chains multiple tools to build rich answers.
 
-The default model is **Llama 4 Scout** on Groq — a MoE model (17B active / 16 experts) with April 2025 training data, running at 750 tokens/sec. It knows about recent music and is completely free.
+The default model is **GPT-OSS 120B** on Groq — OpenAI's open-weight MoE model (120B total / 5.1B active parameters, Apache 2.0) with native tool use and configurable reasoning effort, running at 500 tokens/sec. Since `pi-ai` abstracts the provider, you can swap to Llama, Gemini, Claude, or any other supported model with a single flag.
 
 ## Stack
 
@@ -97,7 +97,7 @@ The default model is **Llama 4 Scout** on Groq — a MoE model (17B active / 16 
 
 ## Blog Post
 
-Read the full writeup: [Building a Music Agent CLI with pi-mono](https://mager.co/blog/2026-02-14-beatbrain-chat-pi-mono)
+Read the full writeup: [Building a Music Agent CLI with pi-mono](https://mager.co/blog/2026-02-16-beatbrain-chat-pi-mono)
 
 ## License
 

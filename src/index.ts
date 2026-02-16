@@ -168,7 +168,7 @@ function loadEnv(): void {
 loadEnv();
 
 // ── System prompt ────────────────────────────────────────
-const SYSTEM_PROMPT = `You are BeatBrain Chat — a music-obsessed friend who lives and breathes new releases, deep cuts, and everything in between.
+const SYSTEM_PROMPT = `You are Temporal — a music-obsessed friend who lives and breathes new releases, deep cuts, and everything in between.
 
 ## Your Context Brain
 
@@ -219,7 +219,7 @@ You're here to help people find their next favorite song — and understand why 
 function parseArgs(): { provider: string; model: string } {
   const args = process.argv.slice(2);
   let provider = process.env.BEATBRAIN_PROVIDER ?? "groq";
-  let model = process.env.BEATBRAIN_MODEL ?? "meta-llama/llama-4-scout-17b-16e-instruct";
+  let model = process.env.BEATBRAIN_MODEL ?? "openai/gpt-oss-120b";
 
   for (let i = 0; i < args.length; i++) {
     if ((args[i] === "--provider" || args[i] === "-p") && args[i + 1]) {
@@ -228,13 +228,13 @@ function parseArgs(): { provider: string; model: string } {
       model = args[++i];
     } else if (args[i] === "--help" || args[i] === "-h") {
       console.log(`
-${c.bold}${c.purple}♫${c.reset} ${c.bold}BeatBrain Chat${c.reset} ${c.dim}— your music-obsessed AI friend${c.reset}
+${c.bold}${c.purple}♫${c.reset} ${c.bold}Temporal${c.reset} ${c.dim}— your music-obsessed AI friend${c.reset}
 
-${c.white}Usage:${c.reset} beatbrain-chat [options]
+${c.white}Usage:${c.reset} temporal [options]
 
 ${c.white}Options:${c.reset}
   -p, --provider <name>   LLM provider ${c.dim}(default: groq)${c.reset}
-  -m, --model <name>      Model name ${c.dim}(default: llama-4-scout)${c.reset}
+  -m, --model <name>      Model name ${c.dim}(default: gpt-oss-120b)${c.reset}
   -h, --help              Show this help
 
 ${c.white}Environment:${c.reset}
@@ -258,7 +258,7 @@ ${c.white}Examples:${c.reset}
 // ── Hero banner ──────────────────────────────────────────
 function printBanner(provider: string, model: string): void {
   console.log();
-  console.log(`  ${c.purple}${c.bold}♫ ♪ ♬${c.reset}  ${c.bold}${c.white}B E A T B R A I N${c.reset}`);
+  console.log(`  ${c.purple}${c.bold}♫ ♪ ♬${c.reset}  ${c.bold}${c.white}T E M P O R A L${c.reset}`);
   console.log(`  ${c.dim}─────────────────────────────────${c.reset}`);
   console.log(`  ${c.dim}Your music-obsessed friend.${c.reset}`);
   console.log(`  ${c.dim}Ask me anything about music.${c.reset}`);
