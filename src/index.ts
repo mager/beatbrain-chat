@@ -1,41 +1,215 @@
+#!/usr/bin/env node
 import * as readline from "node:readline";
+import { readFileSync, existsSync } from "node:fs";
+import { resolve, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import { Agent } from "@mariozechner/pi-agent-core";
 import { getModel } from "@mariozechner/pi-ai";
 import { discoverTool } from "./tools/discover.js";
+import { searchTool } from "./tools/search.js";
+import { creatorTool } from "./tools/creator.js";
+import { trackTool } from "./tools/track.js";
+import { genreTool } from "./tools/genre.js";
 
+// ── Palette ──────────────────────────────────────────────
+const c = {
+  reset: "\x1b[0m",
+  bold: "\x1b[1m",
+  dim: "\x1b[2m",
+  italic: "\x1b[3m",
+  purple: "\x1b[38;5;141m",
+  cyan: "\x1b[38;5;81m",
+  gold: "\x1b[38;5;220m",
+  pink: "\x1b[38;5;211m",
+  gray: "\x1b[38;5;242m",
+  white: "\x1b[38;5;255m",
+  bg: "\x1b[48;5;234m",
+  hide: "\x1b[?25l",
+  show: "\x1b[?25h",
+  clearLine: "\x1b[2K\r",
+};
+
+// ── Animated spinner with musical symbols ────────────────
+const NOTES = ["♪", "♫", "♬", "♩", "♭", "♮", "♯", "𝄞"];
+const NOTE_COLORS = [c.purple, c.cyan, c.gold, c.pink];
+
+class Spinner {
+  private interval: ReturnType<typeof setInterval> | null = null;
+  private frame = 0;
+  private label: string;
+
+  constructor(label: string) {
+    this.label = label;
+  }
+
+  start(): void {
+    process.stdout.write(c.hide);
+    this.interval = setInterval(() => {
+      const note = NOTES[this.frame % NOTES.length];
+      const color = NOTE_COLORS[this.frame % NOTE_COLORS.length];
+      process.stdout.write(
+        `${c.clearLine}  ${color}${note}${c.reset} ${c.dim}${this.label}${c.reset}`
+      );
+      this.frame++;
+    }, 120);
+  }
+
+  stop(): void {
+    if (this.interval) {
+      clearInterval(this.interval);
+      this.interval = null;
+    }
+    process.stdout.write(`${c.clearLine}${c.show}`);
+  }
+}
+
+// ── .env loader ──────────────────────────────────────────
+function loadEnv(): void {
+  const candidates = [
+    resolve(process.cwd(), ".env"),
+    resolve(dirname(fileURLToPath(import.meta.url)), "..", ".env"),
+  ];
+  for (const envPath of candidates) {
+    if (existsSync(envPath)) {
+      const lines = readFileSync(envPath, "utf-8").split("\n");
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith("#")) continue;
+        const eqIdx = trimmed.indexOf("=");
+        if (eqIdx === -1) continue;
+        const key = trimmed.slice(0, eqIdx).trim();
+        let val = trimmed.slice(eqIdx + 1).trim();
+        if (
+          (val.startsWith('"') && val.endsWith('"')) ||
+          (val.startsWith("'") && val.endsWith("'"))
+        ) {
+          val = val.slice(1, -1);
+        }
+        if (!process.env[key]) {
+          process.env[key] = val;
+        }
+      }
+      break;
+    }
+  }
+}
+
+loadEnv();
+
+// ── System prompt ────────────────────────────────────────
 const SYSTEM_PROMPT = `You are BeatBrain Chat — a music-obsessed friend who lives and breathes new releases, deep cuts, and everything in between.
 
-You have access to the BeatBrain discover feed, which aggregates trending tracks from Spotify New Releases, Reddit [FRESH], Billboard, Pitchfork Best New Music, and HotNewHipHop. Use the beatbrain_discover tool to check what's hot.
+## Your Context Brain
 
-Your personality:
+You're powered by the BeatBrain platform (beatbrain.xyz) — a music discovery engine that aggregates trending tracks from five sources: Spotify New Releases, Reddit [FRESH], Billboard Hot 100, Pitchfork Best New Music, and HotNewHipHop. Tracks are scored and ranked using a weighted algorithm. You also have access to Spotify's full catalog, deep MusicBrainz metadata (credits, instruments, genres), and genre-based exploration.
+
+## Your Tools
+
+1. **beatbrain_discover** — The live BeatBrain discover feed. Ranked trending tracks from all five sources with Spotify links. Use when someone asks what's hot, what to listen to, or wants recommendations.
+2. **beatbrain_search** — Search Spotify for specific artists, songs, or queries. Returns popularity scores and Spotify links.
+3. **beatbrain_creator** — Deep artist/creator profiles. Genres, origin, active years, top tracks, production credits, songwriting credits, external links. Use when someone wants to know about an artist or asks "who is [artist]?"
+4. **beatbrain_track** — Deep track analysis. Who played what instruments, who produced it, songwriting credits, musical key, BPM, danceability, energy, happiness score, and more. Use when someone wants to go deep on a specific song.
+5. **beatbrain_genre** — Genre-based discovery. Find popular tracks in any genre. Use when someone says "play me some jazz" or "what's good in electronic right now?"
+
+## Tool Chaining
+
+You can chain tools for deeper answers:
+- Search → Track: Find a song, then get its full credits and analysis
+- Search → Creator: Find an artist, then get their full profile
+- Discover → Track: See what's trending, then deep-dive into a standout track
+- Genre → Track: Explore a genre, then analyze the best track in it
+
+## Personality
+
 - Enthusiastic but not overwhelming. You're the friend who always has a recommendation.
 - Opinionated — you have genuine taste. If something is mid, say so (nicely).
 - You know genres deeply: hip-hop, indie, electronic, R&B, rock, jazz, Latin, and beyond.
 - When recommending tracks, give context: why it's interesting, what it sounds like, who it's for.
+- Always include Spotify links so people can actually listen.
 - Keep responses conversational — this is a chat, not a music review blog.
+- When you have production/instrument credits, share them — music nerds love knowing who played bass on a track.
 - Use the discover feed proactively when someone asks "what should I listen to" or similar.
 - If someone mentions an artist or genre, relate it to what's currently trending.
 
 You're here to help people find their next favorite song.`;
 
-// Resolve provider and model from env or defaults
-const provider = (process.env.BEATBRAIN_PROVIDER ?? "anthropic") as any;
-const modelName = process.env.BEATBRAIN_MODEL ?? "claude-sonnet-4-20250514";
+// ── CLI args ─────────────────────────────────────────────
+function parseArgs(): { provider: string; model: string } {
+  const args = process.argv.slice(2);
+  let provider = process.env.BEATBRAIN_PROVIDER ?? "groq";
+  let model = process.env.BEATBRAIN_MODEL ?? "llama-3.3-70b-versatile";
 
+  for (let i = 0; i < args.length; i++) {
+    if ((args[i] === "--provider" || args[i] === "-p") && args[i + 1]) {
+      provider = args[++i];
+    } else if ((args[i] === "--model" || args[i] === "-m") && args[i + 1]) {
+      model = args[++i];
+    } else if (args[i] === "--help" || args[i] === "-h") {
+      console.log(`
+${c.bold}${c.purple}♫${c.reset} ${c.bold}BeatBrain Chat${c.reset} ${c.dim}— your music-obsessed AI friend${c.reset}
+
+${c.white}Usage:${c.reset} beatbrain-chat [options]
+
+${c.white}Options:${c.reset}
+  -p, --provider <name>   LLM provider ${c.dim}(default: groq)${c.reset}
+  -m, --model <name>      Model name ${c.dim}(default: llama-3.3-70b-versatile)${c.reset}
+  -h, --help              Show this help
+
+${c.white}Environment:${c.reset}
+  GROQ_API_KEY             ${c.dim}Free at console.groq.com${c.reset}
+  BEATBRAIN_PROVIDER       ${c.dim}Override default provider${c.reset}
+  BEATBRAIN_MODEL          ${c.dim}Override default model${c.reset}
+
+${c.white}Examples:${c.reset}
+  ${c.dim}$${c.reset} beatbrain-chat
+  ${c.dim}$${c.reset} beatbrain-chat -p anthropic -m claude-sonnet-4-20250514
+  ${c.dim}$${c.reset} beatbrain-chat -p openai -m gpt-4o
+`);
+      process.exit(0);
+    }
+  }
+
+  return { provider, model };
+}
+
+// ── Hero banner ──────────────────────────────────────────
+function printBanner(provider: string, model: string): void {
+  console.log();
+  console.log(`  ${c.purple}${c.bold}♫ ♪ ♬${c.reset}  ${c.bold}${c.white}B E A T B R A I N${c.reset}`);
+  console.log(`  ${c.dim}─────────────────────────────────${c.reset}`);
+  console.log(`  ${c.dim}Your music-obsessed friend.${c.reset}`);
+  console.log(`  ${c.dim}Ask me anything about music.${c.reset}`);
+  console.log(`  ${c.gray}${provider}/${model}${c.reset}`);
+  console.log();
+}
+
+// ── Main ─────────────────────────────────────────────────
 async function main() {
-  console.log("\n🎵 BeatBrain Chat");
-  console.log("Your music-obsessed friend. Ask me anything about music.\n");
-  console.log(`Model: ${provider}/${modelName}`);
-  console.log('Type "exit" or Ctrl+C to quit.\n');
+  const { provider, model: modelName } = parseArgs();
+
+  printBanner(provider, modelName);
+
+  // Validate API key
+  const keyEnvMap: Record<string, string> = {
+    anthropic: "ANTHROPIC_API_KEY",
+    openai: "OPENAI_API_KEY",
+    google: "GEMINI_API_KEY",
+    groq: "GROQ_API_KEY",
+  };
+  const expectedEnv = keyEnvMap[provider] ?? `${provider.toUpperCase()}_API_KEY`;
+  if (!process.env[expectedEnv] && !process.env.ANTHROPIC_OAUTH_TOKEN) {
+    console.error(`  ${c.pink}✗ ${expectedEnv} is not set.${c.reset}`);
+    console.error(
+      `  ${c.dim}Set it in your environment or create a .env file${c.reset}`
+    );
+    process.exit(1);
+  }
 
   let model;
   try {
-    model = getModel(provider, modelName);
+    model = getModel(provider as any, modelName);
   } catch (e: any) {
-    console.error(`Failed to initialize model: ${e.message}`);
-    console.error(
-      "Set ANTHROPIC_API_KEY, OPENAI_API_KEY, or configure BEATBRAIN_PROVIDER/BEATBRAIN_MODEL."
-    );
+    console.error(`  ${c.pink}✗ Failed to initialize model: ${e.message}${c.reset}`);
     process.exit(1);
   }
 
@@ -43,53 +217,86 @@ async function main() {
     initialState: {
       systemPrompt: SYSTEM_PROMPT,
       model,
-      tools: [discoverTool],
+      tools: [discoverTool, searchTool, creatorTool, trackTool, genreTool],
     },
   });
 
-  // Stream assistant output
+  // ── Streaming + spinner ────────────────────────────────
+  let spinner: Spinner | null = null;
+  let firstToken = true;
+
   agent.subscribe((event) => {
     if (
       event.type === "message_update" &&
       event.assistantMessageEvent?.type === "text_delta"
     ) {
+      // Kill spinner on first token
+      if (spinner) {
+        spinner.stop();
+        spinner = null;
+      }
+      // Print the prompt prefix before first token
+      if (firstToken) {
+        process.stdout.write(`  ${c.gold}♪${c.reset} `);
+        firstToken = false;
+      }
       process.stdout.write(event.assistantMessageEvent.delta);
     }
-    if (
-      event.type === "tool_execution_start"
-    ) {
-      console.log(`\n🔧 Using ${event.toolName}...`);
+    if (event.type === "tool_execution_start") {
+      // Start animated spinner for tool calls
+      const toolLabels: Record<string, string> = {
+        beatbrain_discover: "tuning into the feed",
+        beatbrain_search: "searching the catalog",
+        beatbrain_creator: "pulling up the artist",
+        beatbrain_track: "analyzing the track",
+        beatbrain_genre: "exploring the genre",
+      };
+      const label = toolLabels[event.toolName ?? ""] ?? event.toolName ?? "working";
+      spinner = new Spinner(label);
+      spinner.start();
     }
   });
 
+  // ── REPL ───────────────────────────────────────────────
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
   });
 
-  const prompt = () => {
-    rl.question("\n\x1b[36myou:\x1b[0m ", async (input) => {
-      const trimmed = input.trim();
-      if (!trimmed || trimmed === "exit") {
-        console.log("\n👋 Later! Keep listening to good music.\n");
-        rl.close();
-        process.exit(0);
-      }
+  rl.on("close", () => {
+    console.log(`\n  ${c.purple}♫${c.reset} ${c.dim}Keep listening to good music.${c.reset}\n`);
+    process.exit(0);
+  });
 
-      try {
-        console.log("");
-        process.stdout.write("\x1b[33mbeatbrain:\x1b[0m ");
-        await agent.prompt(trimmed);
-        console.log(""); // newline after streaming
-      } catch (err: any) {
-        console.error(`\n❌ Error: ${err.message}`);
-      }
-
-      prompt();
+  const askQuestion = (): Promise<string> =>
+    new Promise((resolve) => {
+      rl.question(`  ${c.cyan}♩${c.reset} `, resolve);
     });
-  };
 
-  prompt();
+  while (true) {
+    const input = await askQuestion();
+    const trimmed = input.trim();
+
+    if (!trimmed) continue;
+    if (trimmed === "exit" || trimmed === "quit" || trimmed === "q") {
+      rl.close();
+      break;
+    }
+
+    firstToken = true;
+
+    try {
+      console.log();
+      await agent.prompt(trimmed);
+      console.log("\n");
+    } catch (err: any) {
+      if (spinner as Spinner | null) {
+        spinner!.stop();
+        spinner = null;
+      }
+      console.log(`\n  ${c.pink}✗ ${err.message}${c.reset}\n`);
+    }
+  }
 }
 
 main().catch((err) => {
