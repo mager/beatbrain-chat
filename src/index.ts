@@ -23,7 +23,6 @@ const c = {
   pink: "\x1b[38;5;211m",
   gray: "\x1b[38;5;242m",
   white: "\x1b[38;5;255m",
-  bg: "\x1b[48;5;234m",
   hide: "\x1b[?25l",
   show: "\x1b[?25h",
   clearLine: "\x1b[2K\r",
@@ -54,6 +53,10 @@ class Spinner {
     }, 120);
   }
 
+  update(label: string): void {
+    this.label = label;
+  }
+
   stop(): void {
     if (this.interval) {
       clearInterval(this.interval);
@@ -61,6 +64,74 @@ class Spinner {
     }
     process.stdout.write(`${c.clearLine}${c.show}`);
   }
+
+  get active(): boolean {
+    return this.interval !== null;
+  }
+}
+
+// ── Typewriter: buffers text and drains word-by-word ──────
+const WORD_DELAY_MS = 60; // ~16 words/sec visible, feels fluid
+
+class Typewriter {
+  private pending = ""; // partial text waiting for word boundaries
+  private words: string[] = []; // complete words ready to print
+  private draining = false;
+  private resolvers: (() => void)[] = [];
+
+  push(text: string): void {
+    this.pending += text;
+    // Split on word boundaries — keep whitespace attached to the preceding word
+    const parts = this.pending.split(/(?<=\s)/);
+    // Last part may be incomplete (no trailing space), hold it back
+    this.pending = parts.pop() ?? "";
+    for (const part of parts) {
+      this.words.push(part);
+    }
+    if (!this.draining && this.words.length > 0) {
+      this.draining = true;
+      this.drain();
+    }
+  }
+
+  private async drain(): Promise<void> {
+    while (this.words.length > 0) {
+      const word = this.words.shift()!;
+      process.stdout.write(word);
+      await sleep(WORD_DELAY_MS);
+    }
+    this.draining = false;
+    // Check if more words arrived while we were finishing
+    if (this.words.length > 0) {
+      this.draining = true;
+      this.drain();
+      return;
+    }
+    // Notify flush waiters
+    for (const r of this.resolvers) r();
+    this.resolvers = [];
+  }
+
+  /** Flush remaining partial text and wait for drain to finish */
+  async flush(): Promise<void> {
+    // Push any remaining partial text
+    if (this.pending) {
+      this.words.push(this.pending);
+      this.pending = "";
+      if (!this.draining) {
+        this.draining = true;
+        this.drain();
+      }
+    }
+    if (!this.draining) return;
+    return new Promise((resolve) => {
+      this.resolvers.push(resolve);
+    });
+  }
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
 }
 
 // ── .env loader ──────────────────────────────────────────
@@ -183,6 +254,15 @@ function printBanner(provider: string, model: string): void {
   console.log();
 }
 
+// ── Tool label map ───────────────────────────────────────
+const TOOL_LABELS: Record<string, string> = {
+  beatbrain_discover: "tuning into the feed",
+  beatbrain_search: "searching the catalog",
+  beatbrain_creator: "pulling up the artist",
+  beatbrain_track: "analyzing the track",
+  beatbrain_genre: "exploring the genre",
+};
+
 // ── Main ─────────────────────────────────────────────────
 async function main() {
   const { provider, model: modelName } = parseArgs();
@@ -221,39 +301,45 @@ async function main() {
     },
   });
 
-  // ── Streaming + spinner ────────────────────────────────
+  // ── State ──────────────────────────────────────────────
   let spinner: Spinner | null = null;
-  let firstToken = true;
+  let typewriter = new Typewriter();
+  let hasOutput = false; // tracks whether we've printed any text this turn
 
   agent.subscribe((event) => {
     if (
       event.type === "message_update" &&
       event.assistantMessageEvent?.type === "text_delta"
     ) {
-      // Kill spinner on first token
-      if (spinner) {
+      const delta = event.assistantMessageEvent.delta;
+
+      // Kill spinner on first text
+      if (spinner?.active) {
         spinner.stop();
         spinner = null;
       }
-      // Print the prompt prefix before first token
-      if (firstToken) {
+
+      // Print prefix before first text of this turn
+      if (!hasOutput) {
         process.stdout.write(`  ${c.gold}♪${c.reset} `);
-        firstToken = false;
+        hasOutput = true;
       }
-      process.stdout.write(event.assistantMessageEvent.delta);
+
+      typewriter.push(delta);
     }
+
     if (event.type === "tool_execution_start") {
-      // Start animated spinner for tool calls
-      const toolLabels: Record<string, string> = {
-        beatbrain_discover: "tuning into the feed",
-        beatbrain_search: "searching the catalog",
-        beatbrain_creator: "pulling up the artist",
-        beatbrain_track: "analyzing the track",
-        beatbrain_genre: "exploring the genre",
-      };
-      const label = toolLabels[event.toolName ?? ""] ?? event.toolName ?? "working";
-      spinner = new Spinner(label);
-      spinner.start();
+      const label =
+        TOOL_LABELS[event.toolName ?? ""] ?? event.toolName ?? "working";
+
+      if (spinner?.active) {
+        // Already spinning — just update the label (tool chain)
+        spinner.update(label);
+      } else {
+        // New spinner
+        spinner = new Spinner(label);
+        spinner.start();
+      }
     }
   });
 
@@ -283,17 +369,23 @@ async function main() {
       break;
     }
 
-    firstToken = true;
+    // Reset per-turn state
+    hasOutput = false;
+    typewriter = new Typewriter();
 
     try {
       console.log();
       await agent.prompt(trimmed);
+      // Wait for typewriter to finish draining
+      await typewriter.flush();
       console.log("\n");
     } catch (err: any) {
-      if (spinner as Spinner | null) {
-        spinner!.stop();
+      const s = spinner as Spinner | null;
+      if (s?.active) {
+        s.stop();
         spinner = null;
       }
+      await typewriter.flush();
       console.log(`\n  ${c.pink}✗ ${err.message}${c.reset}\n`);
     }
   }
