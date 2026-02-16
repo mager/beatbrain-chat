@@ -1,10 +1,10 @@
 # 🎵 BeatBrain Chat
 
-A music-obsessed AI friend in your terminal. Ask it what to listen to and it pulls from the live [BeatBrain](https://beatbrain.xyz) discover feed — aggregating Spotify New Releases, Reddit [FRESH], Billboard, Pitchfork Best New Music, and HotNewHipHop. Search for any artist or track and get Spotify links to start listening.
+A music-obsessed AI friend in your terminal. Ask it what to listen to and it pulls from the live [BeatBrain](https://beatbrain.xyz) discover feed — aggregating Spotify New Releases, Reddit [FRESH], Billboard, Pitchfork Best New Music, and HotNewHipHop. Deep-dive into any track's production credits, instruments, BPM, key, and audio features. Explore artist profiles and genre-based discovery.
 
 Built with [pi-mono](https://github.com/badlogic/pi-mono) (`@mariozechner/pi-agent-core` + `@mariozechner/pi-ai`), the same toolkit that powers [OpenClaw](https://github.com/openclaw/openclaw).
 
-**100% free** — powered by Groq's free API tier running Llama 3.3 70B. No paid API keys required.
+**100% free** — powered by Groq's free API tier running Llama 4 Scout. No paid API keys required.
 
 ## Quick Start
 
@@ -19,39 +19,39 @@ Get a free API key at [console.groq.com](https://console.groq.com):
 
 ```bash
 export GROQ_API_KEY=gsk_...
-```
-
-Run it:
-
-```bash
 npm start
 ```
 
 ## Usage
 
 ```
-🎵 BeatBrain Chat
-Your music-obsessed friend. Ask me anything about music.
-groq/llama-3.3-70b-versatile
+♫ ♪ ♬  B E A T B R A I N
+─────────────────────────────────
+Your music-obsessed friend.
+Ask me anything about music.
+groq/meta-llama/llama-4-scout-17b-16e-instruct
 
-you: what's hot right now?
-📡 Checking the feed...
-beatbrain: Here's what's trending today...
-
-you: find me some Kendrick Lamar tracks
-🔍 Searching...
-beatbrain: Here's a solid Kendrick selection...
-
-you: exit
-👋 Later! Keep listening to good music.
+♩ has sam smith put out anything good lately?
+♪ Sam Smith's "Unholy" with Kim Petras is still charting — sitting at 77
+  popularity on Spotify. It's in A minor at 131 BPM with 71% danceability,
+  basically a dark, groovy pop banger. Produced by Jimmy Napes and
+  Ilya Salmanzadeh...
+  https://open.spotify.com/track/3nqQXoyQOWXiESFLlDF1hG
 ```
 
-## Tools
+## Tools (Context Brain)
 
-BeatBrain Chat has two tools the agent can use:
+The agent chains these tools automatically to build rich, deep answers:
 
-- **`beatbrain_discover`** — Fetches the ranked discover feed from BeatBrain's API. Supports filtering by source (`spotify_new_releases`, `reddit_fresh`, `hnhh`, `pitchfork_bnm`, `billboard`) and limiting results.
-- **`beatbrain_search`** — Searches Spotify via BeatBrain for specific artists, songs, or queries. Returns popularity scores and Spotify links.
+| Tool | Description |
+|------|-------------|
+| `beatbrain_discover` | Live ranked discover feed from all 5 sources with Spotify links |
+| `beatbrain_search` | Search Spotify for artists, songs, or queries with popularity scores |
+| `beatbrain_track` | Deep track analysis: instruments, production credits, songwriting, key, BPM, danceability, energy |
+| `beatbrain_creator` | Artist/creator profiles: genres, origin, active years, top tracks, credits, external links |
+| `beatbrain_genre` | Genre-based discovery: find popular tracks in any genre |
+
+The agent chains tools automatically — ask about a song and it'll search, pull the full track analysis, and talk about who produced it, what key it's in, and why it bangs.
 
 ## CLI Options
 
@@ -60,7 +60,7 @@ Usage: beatbrain-chat [options]
 
 Options:
   -p, --provider <name>   LLM provider (default: groq)
-  -m, --model <name>      Model name (default: llama-3.3-70b-versatile)
+  -m, --model <name>      Model name (default: llama-4-scout)
   -h, --help              Show this help
 ```
 
@@ -68,31 +68,32 @@ Options:
 
 | Env Var | Default | Description |
 |---------|---------|-------------|
-| `GROQ_API_KEY` | — | Groq API key ([free at console.groq.com](https://console.groq.com)) |
-| `OPENAI_API_KEY` | — | OpenAI API key (if using OpenAI) |
-| `ANTHROPIC_API_KEY` | — | Anthropic API key (if using Anthropic) |
+| `GROQ_API_KEY` | — | Groq API key ([free](https://console.groq.com)) |
+| `GEMINI_API_KEY` | — | Google AI Studio key ([free](https://aistudio.google.com)) |
+| `OPENAI_API_KEY` | — | OpenAI API key |
+| `ANTHROPIC_API_KEY` | — | Anthropic API key |
 | `BEATBRAIN_PROVIDER` | `groq` | Override default provider |
-| `BEATBRAIN_MODEL` | `llama-3.3-70b-versatile` | Model name |
+| `BEATBRAIN_MODEL` | `meta-llama/llama-4-scout-17b-16e-instruct` | Override default model |
 
 ### Alternative providers
 
 ```bash
-# OpenAI
-beatbrain-chat -p openai -m gpt-4o
-
-# Anthropic
+beatbrain-chat -p google -m gemini-2.0-flash    # free
 beatbrain-chat -p anthropic -m claude-sonnet-4-20250514
+beatbrain-chat -p openai -m gpt-4o
 ```
 
 ## How It Works
 
-BeatBrain Chat uses `@mariozechner/pi-agent-core` to create a stateful agent with custom tools. The agent maintains conversation context across turns, streams responses token-by-token, and decides which tools to call based on the conversation.
+BeatBrain Chat uses `@mariozechner/pi-agent-core` to create a stateful agent with five custom tools (the "context brain"). The agent maintains conversation context across turns, streams responses token-by-token with a typewriter effect, and chains multiple tools to build rich answers.
+
+The default model is **Llama 4 Scout** on Groq — a MoE model (17B active / 16 experts) with April 2025 training data, running at 750 tokens/sec. It knows about recent music and is completely free.
 
 ## Stack
 
 - **Agent Runtime**: [@mariozechner/pi-agent-core](https://github.com/badlogic/pi-mono/tree/main/packages/agent) — stateful agent loop with tool execution
 - **LLM API**: [@mariozechner/pi-ai](https://github.com/badlogic/pi-mono/tree/main/packages/ai) — unified multi-provider LLM interface
-- **Data Source**: [BeatBrain](https://beatbrain.xyz) discover API + Spotify search (Go backend on Cloud Run)
+- **Data**: [BeatBrain](https://beatbrain.xyz) API (Go backend on Cloud Run) + Spotify + MusicBrainz
 
 ## Blog Post
 
