@@ -218,8 +218,8 @@ You're here to help people find their next favorite song — and understand why 
 // ── CLI args ─────────────────────────────────────────────
 function parseArgs(): { provider: string; model: string } {
   const args = process.argv.slice(2);
-  let provider = process.env.BEATBRAIN_PROVIDER ?? "google";
-  let model = process.env.BEATBRAIN_MODEL ?? "gemini-2.0-flash";
+  let provider = process.env.BEATBRAIN_PROVIDER ?? "groq";
+  let model = process.env.BEATBRAIN_MODEL ?? "meta-llama/llama-4-scout-17b-16e-instruct";
 
   for (let i = 0; i < args.length; i++) {
     if ((args[i] === "--provider" || args[i] === "-p") && args[i + 1]) {
@@ -233,19 +233,19 @@ ${c.bold}${c.purple}♫${c.reset} ${c.bold}BeatBrain Chat${c.reset} ${c.dim}— 
 ${c.white}Usage:${c.reset} beatbrain-chat [options]
 
 ${c.white}Options:${c.reset}
-  -p, --provider <name>   LLM provider ${c.dim}(default: google)${c.reset}
-  -m, --model <name>      Model name ${c.dim}(default: gemini-2.0-flash)${c.reset}
+  -p, --provider <name>   LLM provider ${c.dim}(default: groq)${c.reset}
+  -m, --model <name>      Model name ${c.dim}(default: llama-4-scout)${c.reset}
   -h, --help              Show this help
 
 ${c.white}Environment:${c.reset}
-  GEMINI_API_KEY           ${c.dim}Free at aistudio.google.com${c.reset}
   GROQ_API_KEY             ${c.dim}Free at console.groq.com${c.reset}
+  GEMINI_API_KEY           ${c.dim}Free at aistudio.google.com${c.reset}
   BEATBRAIN_PROVIDER       ${c.dim}Override default provider${c.reset}
   BEATBRAIN_MODEL          ${c.dim}Override default model${c.reset}
 
 ${c.white}Examples:${c.reset}
   ${c.dim}$${c.reset} beatbrain-chat
-  ${c.dim}$${c.reset} beatbrain-chat -p groq -m llama-3.3-70b-versatile
+  ${c.dim}$${c.reset} beatbrain-chat -p google -m gemini-2.0-flash
   ${c.dim}$${c.reset} beatbrain-chat -p anthropic -m claude-sonnet-4-20250514
 `);
       process.exit(0);
