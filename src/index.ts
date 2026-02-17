@@ -246,9 +246,9 @@ ${c.white}Environment:${c.reset}
   BEATBRAIN_MODEL          ${c.dim}Override default model${c.reset}
 
 ${c.white}Examples:${c.reset}
-  ${c.dim}$${c.reset} beatbrain-chat
-  ${c.dim}$${c.reset} beatbrain-chat -p google -m gemini-2.0-flash
-  ${c.dim}$${c.reset} beatbrain-chat -p anthropic -m claude-sonnet-4-20250514
+  ${c.dim}$${c.reset} temporal
+  ${c.dim}$${c.reset} temporal -p google -m gemini-2.0-flash
+  ${c.dim}$${c.reset} temporal -p anthropic -m claude-sonnet-4-20250514
 `);
       process.exit(0);
     }

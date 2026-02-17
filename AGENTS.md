@@ -1,4 +1,4 @@
-# AGENTS.md — BeatBrain Chat
+# AGENTS.md — Temporal
 
 ## What This Is
 
@@ -7,7 +7,7 @@ A terminal-based music chat agent built on pi-mono (`@mariozechner/pi-agent-core
 ## Architecture
 
 ```
-beatbrain-chat/
+temporal/
 ├── src/
 │   ├── index.ts          # CLI entry point, agent setup, REPL loop, system prompt
 │   └── tools/
@@ -23,7 +23,7 @@ beatbrain-chat/
 
 ## Key Decisions
 
-- **Default model**: `meta-llama/llama-4-scout-17b-16e-instruct` on Groq (free, fast, recent training data)
+- **Default model**: `openai/gpt-oss-120b` on Groq (free, fast, native tool use)
 - **API base**: `https://occipital-cqaymsy2sa-uc.a.run.app` (BeatBrain's Go backend on Cloud Run)
 - **No framework**: Just pi-agent-core + pi-ai directly. Minimal dependencies.
 - **Tool chaining**: System prompt aggressively coaches the model to chain tools (search → track analysis → credits) rather than giving shallow single-tool answers.
