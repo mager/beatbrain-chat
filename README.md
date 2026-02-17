@@ -97,7 +97,7 @@ The default model is **GPT-OSS 120B** on Groq — OpenAI's open-weight MoE model
 
 ## Blog Post
 
-Read the full writeup: [Building a Music Agent CLI with pi-mono](https://mager.dev/blog/2026-02-16-beatbrain-chat-pi-mono)
+Read the full writeup: [Building a Music Agent CLI with pi-mono](https://mager.co/blog/2026-02-16-beatbrain-chat-pi-mono)
 
 ## License
 
